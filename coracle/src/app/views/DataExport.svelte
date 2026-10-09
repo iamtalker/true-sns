@@ -9,6 +9,14 @@
   import {showInfo} from "src/partials/Toast.svelte"
   import {app, profiles} from "src/engine/core"
   import {eventToMarkdown} from "src/true/markdown"
+  import {
+    chooseFolder,
+    forgetFolder,
+    syncAll,
+    mirrorStatus,
+    mirrorFolderName,
+    mirrorMessage,
+  } from "src/true/folderSync"
 
   let userOnly = true
 
@@ -161,6 +169,38 @@
       </FieldInline>
       <Button class="btn" type="submit">Export (JSONL, signed events)</Button>
       <Button class="btn" type="button" on:click={exportMarkdown}>Export notes as Markdown</Button>
+      <div class="flex flex-col gap-2" data-testid="mirror">
+        <p class="text-lg">Keep a folder of .md files up to date</p>
+        {#if $mirrorStatus === "unsupported"}
+          <p class="text-sm text-neutral-400">
+            This browser can't write to a folder. Use the Markdown export above.
+          </p>
+        {:else}
+          <p class="text-sm text-neutral-400">
+            Your notes and articles are saved as plain Markdown files in a folder you choose. Files
+            are only added or updated, never deleted.
+          </p>
+          {#if $mirrorFolderName}
+            <p class="text-sm">
+              Folder: <b>{$mirrorFolderName}</b> ({$mirrorStatus === "on" ? "syncing" : $mirrorStatus})
+            </p>
+          {/if}
+          {#if $mirrorMessage}
+            <p class="text-sm">{$mirrorMessage}</p>
+          {/if}
+          <div class="flex gap-2">
+            <Button class="btn" type="button" on:click={chooseFolder}>
+              {$mirrorFolderName ? "Change folder" : "Choose folder"}
+            </Button>
+            {#if $mirrorFolderName}
+              <Button class="btn" type="button" on:click={syncAll}>
+                {$mirrorStatus === "needs-permission" ? "Allow and sync" : "Sync now"}
+              </Button>
+              <Button class="btn btn-low" type="button" on:click={forgetFolder}>Stop</Button>
+            {/if}
+          </div>
+        {/if}
+      </div>
     </div>
   </FlexColumn>
 </form>

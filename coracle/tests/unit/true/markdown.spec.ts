@@ -51,3 +51,22 @@ describe("markdown round trip", () => {
     expect(eventToMarkdown({kind: 7, created_at: 1, content: "+", tags: []})).toBeUndefined()
   })
 })
+
+import {stableFilename} from "../../../src/true/markdown"
+
+describe("stable filenames", () => {
+  it("keeps an article's file when its title changes", () => {
+    const a = {id: "1", kind: 30023, created_at: 1, content: "x", tags: [["d", "my-post"], ["title", "A"]]}
+    const b = {...a, id: "2", created_at: 99, tags: [["d", "my-post"], ["title", "B"]]}
+
+    expect(stableFilename(a)).toBe("articles/my-post.md")
+    expect(stableFilename(b)).toBe(stableFilename(a))
+  })
+
+  it("keys notes by id and skips other kinds", () => {
+    expect(stableFilename({id: "abcdef123", kind: 1, created_at: 1700000000, content: "", tags: []})).toBe(
+      "notes/2023-11-14-abcdef12.md",
+    )
+    expect(stableFilename({kind: 7, created_at: 1, content: "", tags: []})).toBeUndefined()
+  })
+})

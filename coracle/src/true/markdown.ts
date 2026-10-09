@@ -160,3 +160,17 @@ export const markdownToTemplate = (
     tags,
   }
 }
+
+// A filename that stays the same when the post is edited, so a folder mirror updates the
+// file in place instead of piling up copies. Articles are keyed by their d tag; notes by id.
+export const stableFilename = (event: EventLike): string | undefined => {
+  if (!isMarkdownKind(event.kind)) return undefined
+
+  if (event.kind === LONG_FORM) {
+    const d = getTag(event.tags, "d") || event.id || ""
+
+    return `articles/${slugify(d) || (event.id || "").slice(0, 8) || "untitled"}.md`
+  }
+
+  return `notes/${dateStamp(event.created_at)}-${(event.id || "").slice(0, 8) || "note"}.md`
+}

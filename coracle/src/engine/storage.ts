@@ -14,6 +14,7 @@ import {FollowLists, Handles, Plaintext, Relays, Zappers} from "@welshman/app"
 import type {AppPolicy, IApp} from "@welshman/app"
 import {app, appPolicies, sessions} from "src/engine/core"
 import {env} from "src/engine/env"
+import "src/true/folderSync"
 
 // IndexedDB
 
