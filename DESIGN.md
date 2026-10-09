@@ -127,6 +127,12 @@
 - 테스트 계정: 로그인 화면의 **"Use a test account (dev only)"** 버튼(일회용 키를 만들어 바로 입장, 프로필 검색 단계 생략). `coracle/.env` 에 `VITE_DEV_LOGIN=true` 이고 dev 서버(`import.meta.env.DEV`)일 때만 보이며 프로덕션 빌드에는 나타나지 않음. 키는 그 브라우저의 localStorage 에만 있음(지우면 계정도 사라짐).
 - 직접 써 보는 길: 로그인 → 왼쪽 메뉴 Settings → Database(`/settings/data`) → Export 의 Create Backup(Markdown/폴더 미러) / Import 의 Upload Backup.
 
+## 7-0. 한국어 화면
+- `/true-host.json` 의 `"lang": "ko"` (기본 파일은 ko). Coracle 은 영어 문구가 수백 곳에 흩어져 있어, 화면의 영어 문구를 사전(`coracle/src/true/ko.ts`)으로 바꿔 주는 번역 층(`i18n.ts`, MutationObserver)을 붙임. 사용자가 쓴 글/입력창은 건드리지 않음.
+- 사전에 없는 문구는 영어로 남음. 어색한 번역은 `ko.ts` 에서 한 줄씩 고치면 됨. 숫자가 들어간 문구는 `KO_PATTERNS`.
+- 확인한 화면: 피드, 설정(콘텐츠/데이터/키/프로필/릴레이), 쪽지, 그룹, 목록, 알림, 글쓰기, 소개. 아직 안 본 화면(상세 설정 팝업, 지갑, 초대 등)은 영어가 남을 수 있음.
+- 한계: 한 문장이 링크 때문에 조각나 있는 곳은 조각별로 번역돼 어색할 수 있음.
+
 ## 7-1. 사용해 보다 발견한 문제 (수정됨)
 - 글을 써도 **내 글이 피드에 안 보임**: 홈 피드가 "팔로우한 사람(없으면 Coracle 기본 목록)"의 글만 보여 줌 → 홈 피드에 내 글을 항상 포함(`defaultFeed`, `state.ts`).
 - 작성 화면을 페이지로 열었을 때 발행 후에도 그 화면에 글이 그대로 남음 → 발행 후 피드로 이동(`NoteCreate.svelte`).

@@ -1,6 +1,7 @@
 import {derived, writable} from "svelte/store"
 import {synced, localStorageProvider} from "@welshman/store"
 import {DEFAULT_HOST, getSpace, parseHostConfig, resolveMode} from "src/true/spaceConfig"
+import {startTranslator} from "src/true/i18n"
 import type {HostConfig, SpaceMode} from "src/true/spaceConfig"
 
 // What the host (server operator) configured, loaded from /true-host.json at startup.
@@ -29,4 +30,9 @@ export const spaceMode = derived([hostConfig, userMode], ([$host, $user]) =>
 
 export const space = derived(spaceMode, $mode => getSpace($mode))
 
-if (typeof window !== "undefined") void loadHostConfig()
+if (typeof window !== "undefined") {
+  // Re-run the translator when the host's language is known
+  hostConfig.subscribe($host => startTranslator($host.lang))
+
+  void loadHostConfig()
+}

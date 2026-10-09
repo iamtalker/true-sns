@@ -36,11 +36,13 @@ describe("host config", () => {
   it("falls back field by field on bad input", () => {
     expect(parseHostConfig(null)).toEqual(DEFAULT_HOST)
     expect(parseHostConfig({mode: "wiki", allowUserMode: "yes", name: 5})).toEqual(DEFAULT_HOST)
-    expect(parseHostConfig({mode: "board", name: "x"})).toEqual({
+    expect(parseHostConfig({mode: "board", name: "x", lang: "ko"})).toEqual({
       name: "x",
       mode: "board",
       allowUserMode: true,
+      lang: "ko",
     })
+    expect(parseHostConfig({lang: "fr"}).lang).toBe("en")
   })
 
   it("host wins unless users may choose", () => {

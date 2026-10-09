@@ -80,13 +80,21 @@ export const slugifyTitle = (title: string, fallback: string) =>
 // Host configuration: the server operator decides how the space looks. It is a small JSON
 // document served next to the app (see public/true-host.json), so any static host can provide it.
 
+export type HostLang = "en" | "ko"
+
 export type HostConfig = {
   name: string
   mode: SpaceMode
   allowUserMode: boolean
+  lang: HostLang
 }
 
-export const DEFAULT_HOST: HostConfig = {name: "", mode: DEFAULT_SPACE, allowUserMode: true}
+export const DEFAULT_HOST: HostConfig = {
+  name: "",
+  mode: DEFAULT_SPACE,
+  allowUserMode: true,
+  lang: "en",
+}
 
 // Accepts anything (the file comes from the network) and falls back field by field.
 export const parseHostConfig = (raw: unknown): HostConfig => {
@@ -97,6 +105,7 @@ export const parseHostConfig = (raw: unknown): HostConfig => {
     mode: isSpaceMode(o.mode) ? o.mode : DEFAULT_HOST.mode,
     allowUserMode:
       typeof o.allowUserMode === "boolean" ? o.allowUserMode : DEFAULT_HOST.allowUserMode,
+    lang: o.lang === "ko" || o.lang === "en" ? o.lang : DEFAULT_HOST.lang,
   }
 }
 

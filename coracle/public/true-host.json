@@ -1,5 +1,6 @@
 {
   "name": "true sns",
   "mode": "micro",
-  "allowUserMode": true
+  "allowUserMode": true,
+  "lang": "ko"
 }
