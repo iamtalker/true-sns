@@ -73,7 +73,7 @@
   - blog: 긴 글 2개만, 제목+요약 카드
   - micro: 3개 모두 기존 카드 방식
 - [x] **실발행 확인 (로컬 테스트 릴레이)**: Blog 모드에서 제목 없이 Send → "Please provide a title." 차단, 제목+본문 → kind 30023 (`d`=제목slug+랜덤6자, `title`, `published_at`) 서명되어 릴레이에 저장됨. 발행 테스트 중 발견·수정한 버그: `d` 태그를 `addTags` 로 넣으면 `ArticleWriter.validate` 가 거부 → `setIdentifier()` 사용.
-- [ ] board 상세/댓글 화면은 미확인
+- [x] board 행 클릭 → 기존 Coracle 상세 화면(naddr 라우트)이 열려 제목·마크다운 본문 표시 확인. 댓글/답글은 기존 Coracle 기능을 그대로 사용(게시판 전용 댓글 UI·페이지네이션·정렬 옵션은 아직 없음)
 
 **발견: 릴레이 관련**
 - welshman 라우터는 기본적으로 `ws://` 및 localhost 릴레이를 제외함 → 개발용 플래그 `VITE_ALLOW_LOCAL_RELAYS=true` 추가(`env.ts`, `core.ts` 의 Resolver `allowLocal`/`allowInsecure`). 기본값 꺼짐.
@@ -127,7 +127,7 @@
 | 3 | 로컬 테스트 릴레이, 실발행 검증 | 완료 |
 | 4 | 새 계정 기본 릴레이 폴백 | 완료(안내 UI 남음) |
 | 5 | 호스트 설정(서버가 모드를 정함) | 완료 (`/true-host.json`) |
-| 6 | Board 상세/댓글 화면 | 예정 |
+| 6 | Board 상세/댓글 화면 | 기본 동작 확인(전용 UI 없음) |
 | 7 | 로컬 폴더(Obsidian 등) 자동 동기화 | 예정 |
 | 8 | strfry 서버 구성, 이름·로고 교체, 모바일 빌드(스텁 제거) | 예정 |
 | 9 | 키 분실 대비 안내/백업, 포럼·위키 모드 | 예정 |
