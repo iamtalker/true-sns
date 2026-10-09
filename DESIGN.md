@@ -77,7 +77,7 @@
 
 **발견: 릴레이 관련**
 - welshman 라우터는 기본적으로 `ws://` 및 localhost 릴레이를 제외함 → 개발용 플래그 `VITE_ALLOW_LOCAL_RELAYS=true` 추가(`env.ts`, `core.ts` 의 Resolver `allowLocal`/`allowInsecure`). 기본값 꺼짐.
-- **릴레이 목록이 비어 있는 계정은 발행이 조용히 아무 곳에도 안 나감**(코드에 TODO 로 남아 있음). 신규 가입/첫 로그인 시 기본 릴레이를 사용자 릴레이 목록(kind 10002)에 넣어 주는 온보딩 처리가 필요. 로컬에는 저장되므로 데이터 손실은 아니지만 사용자에게 알려야 함.
+- **릴레이 목록이 비어 있는 계정은 발행이 조용히 아무 곳에도 안 나갔음**(원본 코드의 TODO). → 수정: 라우터 정책을 `addMinimalFallbacks` 로 바꿔, 선택된 릴레이가 0개면 호스트 기본 릴레이(`VITE_DEFAULT_RELAYS`) 1개로 대체. 새 계정(릴레이 목록 없음)으로 발행해 로컬 릴레이에 도착함을 확인. 남은 일: 사용자에게 "기본 릴레이를 쓰는 중"임을 알리는 UI, 사용자가 릴레이를 직접 고르게 하는 온보딩.
 
 **발견: 로컬 우선과 충돌하는 지점** — Coracle 은 "네트워크 먼저, 로컬 캐시는 나중". 구상(로컬이 원본)과 반대이므로 `Feed.svelte` 에서 로컬 저장소를 즉시 조회해 먼저 그리는 로직이 필요하다.
 1. **Space(호스트) 설정 모델**: `{ mode: "board"|"micro"|"blog", titleRequired, maxLength, kinds[], layout }` 를 JSON 으로 정의(처음엔 앱 설정/URL 파라미터).
@@ -109,3 +109,16 @@
 - 앱을 그 릴레이로 연결하려면 `coracle/.env` (git 무시됨):
   `VITE_DEFAULT_RELAYS / INDEXER / SEARCH / DVM / SIGNER_RELAYS = ws://localhost:7777`, `VITE_ALLOW_LOCAL_RELAYS=true` → dev 서버 재시작. 이 상태에선 공개 릴레이로 아무것도 나가지 않음.
 - 테스트 계정은 가입 화면(외부 nstart 로 이동) 대신, 일회용 키를 localStorage `sessions`/`pubkey` 에 직접 넣어 로그인(테스트 후 삭제).
+
+## 8. 로드맵 (현재)
+| # | 작업 | 상태 |
+|---|---|---|
+| 1 | 소유 층: 내 글 영구 보존/즉시 저장, 로컬 우선 피드, Markdown export/import | 완료 |
+| 2 | 표현 층: Micro/Blog/Board 전환, 모드별 작성 | 완료 |
+| 3 | 로컬 테스트 릴레이, 실발행 검증 | 완료 |
+| 4 | 새 계정 기본 릴레이 폴백 | 완료(안내 UI 남음) |
+| 5 | 호스트 설정(서버가 모드를 정함) | 다음 |
+| 6 | Board 상세/댓글 화면 | 예정 |
+| 7 | 로컬 폴더(Obsidian 등) 자동 동기화 | 예정 |
+| 8 | strfry 서버 구성, 이름·로고 교체, 모바일 빌드(스텁 제거) | 예정 |
+| 9 | 키 분실 대비 안내/백업, 포럼·위키 모드 | 예정 |

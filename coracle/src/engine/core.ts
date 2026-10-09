@@ -4,7 +4,7 @@ import {always, noop} from "@welshman/lib"
 import type {Maybe} from "@welshman/lib"
 import {withGetter, synced, localStorageProvider} from "@welshman/store"
 import type {ReadableWithGetter} from "@welshman/store"
-import {Resolver, addNoFallbacks} from "@welshman/util"
+import {Resolver, addMinimalFallbacks} from "@welshman/util"
 import type {Filter, RelaySelection} from "@welshman/util"
 import type {BaseEventReader, EventQuery, EventWriter, KindFactory} from "@welshman/domain"
 import type {ISigner} from "@welshman/signer"
@@ -82,8 +82,9 @@ const appPolicyRouter: AppPolicy = app => {
       return appConfig.relayLimit
     },
     // An empty selection means the user or the person they're addressing has no relays set up.
-    // TODO: surface that instead of silently publishing or querying nowhere.
-    policy: addNoFallbacks,
+    // Fall back to one of the host's default relays instead of silently publishing or
+    // querying nowhere (a brand-new account would otherwise never reach any server).
+    policy: addMinimalFallbacks,
     getRelayQuality: url => app.use(RelayStats).getQuality(url),
     getDefaultRelays: app.config.getDefaultRelays,
     allowLocal: env.ALLOW_LOCAL_RELAYS,
