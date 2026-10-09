@@ -19,6 +19,8 @@ export const env = {
   SEARCH_RELAYS: fromCsv(import.meta.env.VITE_SEARCH_RELAYS).map(normalizeRelayUrl) as string[],
   SIGNER_RELAYS: fromCsv(import.meta.env.VITE_SIGNER_RELAYS).map(normalizeRelayUrl) as string[],
   // Dev only: let the router use ws:// and localhost relays (e.g. a local test relay)
+  // Dev only: a one-click throwaway test account on the login screen (never in production builds)
+  DEV_LOGIN: import.meta.env.DEV && import.meta.env.VITE_DEV_LOGIN === "true",
   ALLOW_LOCAL_RELAYS: import.meta.env.VITE_ALLOW_LOCAL_RELAYS === "true",
   APP_URL: import.meta.env.VITE_APP_URL,
   APP_NAME: import.meta.env.VITE_APP_NAME,

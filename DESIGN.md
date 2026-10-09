@@ -124,7 +124,8 @@
 - **로컬 테스트 릴레이**: `C:\claude program\true sns\dev-relay` (`npm install` 후 `node relay.mjs`, 포트 7777, 메모리 저장, NIP-01/11, 서명 검증·교체형/주소형 이벤트·삭제 지원, `node selftest.mjs` 로 자체 점검). 운영용은 strfry.
 - 앱을 그 릴레이로 연결하려면 `coracle/.env` (git 무시됨):
   `VITE_DEFAULT_RELAYS / INDEXER / SEARCH / DVM / SIGNER_RELAYS = ws://localhost:7777`, `VITE_ALLOW_LOCAL_RELAYS=true` → dev 서버 재시작. 이 상태에선 공개 릴레이로 아무것도 나가지 않음.
-- 테스트 계정은 가입 화면(외부 nstart 로 이동) 대신, 일회용 키를 localStorage `sessions`/`pubkey` 에 직접 넣어 로그인(테스트 후 삭제).
+- 테스트 계정: 로그인 화면의 **"Use a test account (dev only)"** 버튼(일회용 키를 만들어 바로 입장, 프로필 검색 단계 생략). `coracle/.env` 에 `VITE_DEV_LOGIN=true` 이고 dev 서버(`import.meta.env.DEV`)일 때만 보이며 프로덕션 빌드에는 나타나지 않음. 키는 그 브라우저의 localStorage 에만 있음(지우면 계정도 사라짐).
+- 직접 써 보는 길: 로그인 → 왼쪽 메뉴 Settings → Database(`/settings/data`) → Export 의 Create Backup(Markdown/폴더 미러) / Import 의 Upload Backup.
 
 ## 8. 로드맵 (현재)
 | # | 작업 | 상태 |

@@ -10,7 +10,9 @@
   import {Capacitor} from "@capacitor/core"
   import {getNip07, getNip55, Nip55Signer} from "@welshman/signer"
   import type {Nip55AppInfo} from "@welshman/signer"
-  import {toSession, nip07, nip55} from "@welshman/app"
+  import {toSession, nip01, nip07, nip55} from "@welshman/app"
+  import {generateSecretKey} from "nostr-tools/pure"
+  import {env} from "src/engine/env"
   import type {Session} from "@welshman/app"
   import {appName} from "src/partials/state"
   import {showWarning} from "src/partials/Toast.svelte"
@@ -39,6 +41,19 @@
   }
 
   const useExtension = () => logIn(toSession(nip07, {}))
+
+  // Dev only (see env.DEV_LOGIN): log in with a freshly generated throwaway key
+  // A brand-new key has no profile to find on the network, so skip the "searching" step.
+  const useTestAccount = async () => {
+    await login(
+      toSession(nip01, {
+        secret: Array.from(generateSecretKey(), b => b.toString(16).padStart(2, "0")).join(""),
+      }),
+    )
+
+    router.clearModals()
+    router.at("notes").push()
+  }
 
   const useSigner = async (signerApp: Nip55AppInfo) => {
     const signer = new Nip55Signer(signerApp.packageName)
@@ -80,6 +95,11 @@
           Use {signerApp.name}
         </Button>
       {/each}
+      {#if env.DEV_LOGIN}
+        <Button class="btn btn-tall btn-accent" on:click={useTestAccount}>
+          <i class="fa fa-flask" /> Use a test account (dev only)
+        </Button>
+      {/if}
       <Button class="btn btn-tall" on:click={useBunker}>
         <i class="fa fa-box" /> Use Remote Signer
       </Button>
