@@ -6,6 +6,9 @@ export const KO: Record<string, string> = {
   Micro: "짧은 글",
   Blog: "블로그",
   Board: "게시판",
+  "Short posts as cards, no title, up to 280 characters.": "제목 없는 짧은 글을 카드로 보여 줍니다 (280자까지).",
+  "Only titled long posts, shown with title and summary.": "제목이 있는 긴 글만, 제목과 요약으로 보여 줍니다.",
+  "Every post as a one-line list: title, author, date.": "모든 글을 제목·작성자·날짜 한 줄 목록으로 보여 줍니다.",
 
   // Navigation / menu
   Feeds: "피드",

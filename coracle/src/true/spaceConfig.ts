@@ -7,6 +7,7 @@ export type SpaceMode = "micro" | "blog" | "board"
 export type SpaceConfig = {
   mode: SpaceMode
   label: string
+  description: string
   kinds: number[]
   layout: "full" | "list"
   titleRequired: boolean
@@ -18,6 +19,7 @@ export const SPACES: Record<SpaceMode, SpaceConfig> = {
   micro: {
     mode: "micro",
     label: "Micro",
+    description: "Short posts as cards, no title, up to 280 characters.",
     kinds: [1],
     layout: "full",
     titleRequired: false,
@@ -27,6 +29,7 @@ export const SPACES: Record<SpaceMode, SpaceConfig> = {
   blog: {
     mode: "blog",
     label: "Blog",
+    description: "Only titled long posts, shown with title and summary.",
     kinds: [30023],
     layout: "full",
     titleRequired: true,
@@ -35,6 +38,7 @@ export const SPACES: Record<SpaceMode, SpaceConfig> = {
   board: {
     mode: "board",
     label: "Board",
+    description: "Every post as a one-line list: title, author, date.",
     kinds: [1, 30023],
     layout: "list",
     titleRequired: true,

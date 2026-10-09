@@ -55,6 +55,10 @@
       })
     : writable(false)
 
+  // Blog and Board show only their own kinds. Filtering again here (besides narrowing the
+  // request) keeps this right even when a feed definition combines kind filters in odd ways.
+  const inSpace = (e: TrustedEvent) => $space.mode === "micro" || $space.kinds.includes(e.kind)
+
   // Local-first: the controller only consults the local store after the network race, so an
   // offline or slow relay would hide the user's own data. Show what we already have right away.
   const showLocalFirst = async (controller: FeedController, definition: FeedDefinition, signal) => {
@@ -64,7 +68,7 @@
       if (signal.aborted) return
 
       for (const {filters} of items) {
-        for (const e of $app.repository.query(filters)) buffer.push(e)
+        for (const e of $app.repository.query(filters)) if (inSpace(e)) buffer.push(e)
       }
 
       loadMore()
@@ -99,9 +103,12 @@
     const defaultKinds =
       $space.mode === "micro" ? [...noteKinds, ...repostKinds] : $space.kinds
 
-    const definition = hasKinds
-      ? feed.definition
-      : makeIntersectionFeed(makeKindFeed(...defaultKinds), feed.definition)
+    // A feed that already filters by kind (like the home feed) must still be narrowed to the
+    // space's kinds, otherwise switching Blog/Board would not change what is shown.
+    const definition =
+      hasKinds && $space.mode === "micro"
+        ? feed.definition
+        : makeIntersectionFeed(makeKindFeed(...defaultKinds), feed.definition)
 
     ctrl = $feeds.makeFeedController({
       feed: definition,
@@ -110,7 +117,7 @@
       onEvent: e => {
         if (signal.aborted) return
 
-        buffer.push(e)
+        if (inSpace(e)) buffer.push(e)
       },
       onExhausted: () => {
         if (signal.aborted) return

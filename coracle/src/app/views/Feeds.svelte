@@ -37,6 +37,7 @@
       </Button>
     {/each}
   </div>
+  <p class="mb-4 text-sm text-neutral-400 xl:-ml-40 xl:mr-40">{SPACES[$spaceMode].description}</p>
 {/if}
 
 <div class="xl:-ml-40 xl:mr-40">
