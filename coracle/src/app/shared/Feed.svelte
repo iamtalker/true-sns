@@ -28,7 +28,8 @@
   import {env} from "src/engine"
   import FeedItem from "src/app/shared/FeedItem.svelte"
   import BoardRow from "src/true/BoardRow.svelte"
-  import {space} from "src/true/space"
+  import BlogCard from "src/true/BlogCard.svelte"
+  import {hostConfig, space} from "src/true/space"
 
   export let feed: Feed
   export let anchor = null
@@ -57,7 +58,11 @@
 
   // Blog and Board show only their own kinds. Filtering again here (besides narrowing the
   // request) keeps this right even when a feed definition combines kind filters in odd ways.
-  const inSpace = (e: TrustedEvent) => $space.mode === "micro" || $space.kinds.includes(e.kind)
+  const inSpace = (e: TrustedEvent) =>
+    $space.mode === "micro" ||
+    ($space.kinds.includes(e.kind) &&
+      // A blog has one author: the host's owner, when one is configured
+      !($space.mode === "blog" && $hostConfig.owner && e.pubkey !== $hostConfig.owner))
 
   // Local-first: the controller only consults the local store after the network race, so an
   // offline or slow relay would hide the user's own data. Show what we already have right away.
@@ -203,6 +208,8 @@
       <div in:fly={{y: 20}}>
         {#if $space.layout === "list"}
           <BoardRow {event} />
+        {:else if $space.layout === "blog"}
+          <BlogCard {event} />
         {:else}
           <FeedItem showMeta topLevel {getContext} {depth} {anchor} note={event} />
         {/if}

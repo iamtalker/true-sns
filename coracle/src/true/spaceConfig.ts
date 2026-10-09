@@ -1,3 +1,5 @@
+import {decode} from "nostr-tools/nip19"
+
 // A "space" decides how the same posts are presented and composed.
 // Posts are always plain nostr events (kind 1 notes, kind 30023 articles);
 // only the view and the composer rules change.
@@ -9,7 +11,7 @@ export type SpaceConfig = {
   label: string
   description: string
   kinds: number[]
-  layout: "full" | "list"
+  layout: "full" | "list" | "blog"
   titleRequired: boolean
   showTitleField: boolean
   maxLength?: number
@@ -29,16 +31,16 @@ export const SPACES: Record<SpaceMode, SpaceConfig> = {
   blog: {
     mode: "blog",
     label: "Blog",
-    description: "Only titled long posts, shown with title and summary.",
+    description: "One author's long posts, for reading: big title, summary, reading time.",
     kinds: [30023],
-    layout: "full",
+    layout: "blog",
     titleRequired: true,
     showTitleField: true,
   },
   board: {
     mode: "board",
     label: "Board",
-    description: "Every post as a one-line list: title, author, date.",
+    description: "Everyone's posts as a one-line list for discussion: title, author, date, reply count.",
     kinds: [1, 30023],
     layout: "list",
     titleRequired: true,
@@ -91,6 +93,8 @@ export type HostConfig = {
   mode: SpaceMode
   allowUserMode: boolean
   lang: HostLang
+  // Hex pubkey of the blog's author. When set, the Blog mode shows only this person's posts.
+  owner: string
 }
 
 export const DEFAULT_HOST: HostConfig = {
@@ -98,6 +102,28 @@ export const DEFAULT_HOST: HostConfig = {
   mode: DEFAULT_SPACE,
   allowUserMode: true,
   lang: "en",
+  owner: "",
+}
+
+// Accepts a hex pubkey or an npub and returns hex ("" when it is neither).
+export const normalizeOwner = (value: unknown): string => {
+  if (typeof value !== "string") return ""
+
+  const v = value.trim()
+
+  if (/^[0-9a-f]{64}$/.test(v)) return v
+
+  if (v.startsWith("npub1")) {
+    try {
+      const d = decode(v)
+
+      return d.type === "npub" ? (d.data as string) : ""
+    } catch (e) {
+      return ""
+    }
+  }
+
+  return ""
 }
 
 // Accepts anything (the file comes from the network) and falls back field by field.
@@ -110,6 +136,7 @@ export const parseHostConfig = (raw: unknown): HostConfig => {
     allowUserMode:
       typeof o.allowUserMode === "boolean" ? o.allowUserMode : DEFAULT_HOST.allowUserMode,
     lang: o.lang === "ko" || o.lang === "en" ? o.lang : DEFAULT_HOST.lang,
+    owner: normalizeOwner(o.owner),
   }
 }
 

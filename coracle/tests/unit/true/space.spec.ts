@@ -41,6 +41,7 @@ describe("host config", () => {
       mode: "board",
       allowUserMode: true,
       lang: "ko",
+      owner: "",
     })
     expect(parseHostConfig({lang: "fr"}).lang).toBe("en")
   })

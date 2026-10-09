@@ -7,8 +7,10 @@ export const KO: Record<string, string> = {
   Blog: "블로그",
   Board: "게시판",
   "Short posts as cards, no title, up to 280 characters.": "제목 없는 짧은 글을 카드로 보여 줍니다 (280자까지).",
-  "Only titled long posts, shown with title and summary.": "제목이 있는 긴 글만, 제목과 요약으로 보여 줍니다.",
-  "Every post as a one-line list: title, author, date.": "모든 글을 제목·작성자·날짜 한 줄 목록으로 보여 줍니다.",
+  "One author's long posts, for reading: big title, summary, reading time.":
+    "글쓴이 한 사람의 긴 글을 읽기 좋게 보여 줍니다: 큰 제목, 요약, 읽는 시간.",
+  "Everyone's posts as a one-line list for discussion: title, author, date, reply count.":
+    "모두의 글을 토론하기 좋은 한 줄 목록으로 보여 줍니다: 제목, 작성자, 날짜, 댓글 수.",
 
   // Navigation / menu
   Feeds: "피드",
@@ -326,6 +328,8 @@ export const KO: Record<string, string> = {
 
 // For text with numbers or names in it
 export const KO_PATTERNS: [RegExp, string][] = [
+  [/^(\d+) min read$/, "$1분 읽기"],
+  [/^Replies: (\d+)$/, "댓글 $1"],
   [/^(\d[\d,]*) characters$/, "$1자"],
   [/^(\d[\d,]*) \/ (\d+) characters$/, "$1 / $2자"],
   [/^(\d[\d,]*) words$/, "$1단어"],

@@ -31,3 +31,11 @@ describe("translate", () => {
     expect(translate("Settings")).toBeUndefined()
   })
 })
+
+describe("board and blog labels", () => {
+  it("translates reply counts and reading time", () => {
+    startTranslator("ko")
+    expect(translate("Replies: 2")).toBe("댓글 2")
+    expect(translate("3 min read")).toBe("3분 읽기")
+  })
+})
