@@ -4,7 +4,7 @@ import {fromCsv} from "src/util/misc"
 export const env = {
   CLIENT_ID: import.meta.env.VITE_CLIENT_ID as string,
   CLIENT_NAME: import.meta.env.VITE_CLIENT_NAME as string,
-  DEFAULT_FOLLOWS: fromCsv(import.meta.env.VITE_DEFAULT_FOLLOWS) as string,
+  DEFAULT_FOLLOWS: fromCsv(import.meta.env.VITE_DEFAULT_FOLLOWS) as string[],
   DEFAULT_RELAYS: fromCsv(import.meta.env.VITE_DEFAULT_RELAYS).map(normalizeRelayUrl) as string[],
   INDEXER_RELAYS: fromCsv(import.meta.env.VITE_INDEXER_RELAYS).map(normalizeRelayUrl) as string[],
   DUFFLEPUD_URL: import.meta.env.VITE_DUFFLEPUD_URL as string,

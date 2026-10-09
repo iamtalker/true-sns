@@ -86,6 +86,7 @@
     abortController.abort()
     abortController = new AbortController()
     exhausted = false
+    emptyLoads = 0
     useWindowing = true
     events = []
     buffer = []
@@ -145,18 +146,32 @@
     reload()
   }
 
+  // The controller walks back through time one window at a time until it reaches the start of
+  // time, which for a small feed means many requests over empty ranges while the spinner
+  // keeps turning. Windows grow quickly, so a few empty ones in a row mean nothing is left.
+  const MAX_EMPTY_LOADS = 3
+
   const loadMore = async () => {
     buffer = uniqBy(e => e.id, sortEventsDesc(buffer))
     events = [...events, ...buffer.splice(0, 10)]
 
-    if (useWindowing && buffer.length < 25) {
-      ctrl.load(25).catch(noop)
+    if (useWindowing && !exhausted && buffer.length < 25) {
+      const before = buffer.length + events.length
+
+      // Wait for the page: the scroller calls again every few hundred ms and overlapping
+      // loads only pile up identical requests
+      await ctrl.load(25).catch(noop)
+
+      emptyLoads = buffer.length + events.length > before ? 0 : emptyLoads + 1
+
+      if (emptyLoads >= MAX_EMPTY_LOADS) exhausted = true
     }
   }
 
   let element
   let depth = 0
   let exhausted = false
+  let emptyLoads = 0
   let useWindowing = true
   let ctrl: FeedController
   let events: TrustedEvent[] = []

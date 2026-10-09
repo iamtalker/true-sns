@@ -81,7 +81,7 @@ wss.on("connection", ws => {
     }
 
     const [type, a, ...rest] = msg
-    if (process.env.VERBOSE) console.log("<-", type, JSON.stringify(a)?.slice(0, 120))
+    if (process.env.VERBOSE) console.log("<-", type, JSON.stringify(type === "REQ" ? rest : a)?.slice(0, 220))
 
     if (type === "EVENT") {
       if (!verifyEvent(a)) return send(ws, ["OK", a?.id, false, "invalid: bad signature"])

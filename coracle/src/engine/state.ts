@@ -484,14 +484,23 @@ export const userFeeds = derived(
 export const defaultFeed = derived(
   [userFollows, userFeeds, pubkey],
   ([$userFollows, $userFeeds, $pubkey]) => {
+    const defaultAuthors = env.DEFAULT_FOLLOWS.filter(Boolean)
+
+    // With no follows and no curated accounts the home feed is just the user's own posts
     const followsDefinition =
-      $userFollows?.size > 0 ? makeScopeFeed(Scope.Follows) : makeAuthorFeed(...env.DEFAULT_FOLLOWS)
+      $userFollows?.size > 0
+        ? makeScopeFeed(Scope.Follows)
+        : defaultAuthors.length > 0
+          ? makeAuthorFeed(...defaultAuthors)
+          : undefined
 
     // The user's own posts always belong in their home feed. Otherwise a new account that
     // follows nobody writes something and never sees it.
     const baseDefinition = $pubkey
-      ? makeUnionFeed(followsDefinition, makeAuthorFeed($pubkey))
-      : followsDefinition
+      ? followsDefinition
+        ? makeUnionFeed(followsDefinition, makeAuthorFeed($pubkey))
+        : makeAuthorFeed($pubkey)
+      : followsDefinition || makeAuthorFeed()
 
     const definition = normalizeFeedDefinition(
       makeIntersectionFeed(baseDefinition, makeKindFeed(...noteKinds)),
