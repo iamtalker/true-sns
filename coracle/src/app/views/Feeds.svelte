@@ -4,7 +4,7 @@
   import Feed from "src/app/shared/Feed.svelte"
   import {router} from "src/app/util/router"
   import {defaultFeed} from "src/engine"
-  import {spaceMode} from "src/true/space"
+  import {hostConfig, spaceMode, userMode} from "src/true/space"
   import {SPACES, SPACE_MODES} from "src/true/spaceConfig"
 
   export let feed = null
@@ -27,15 +27,17 @@
   </div>
 {/if}
 
-<div class="mb-4 flex gap-2 xl:-ml-40 xl:mr-40">
-  {#each SPACE_MODES as mode}
-    <Button
-      class={$spaceMode === mode ? "btn btn-accent" : "btn btn-low"}
-      on:click={() => spaceMode.set(mode)}>
-      {SPACES[mode].label}
-    </Button>
-  {/each}
-</div>
+{#if $hostConfig.allowUserMode}
+  <div class="mb-4 flex gap-2 xl:-ml-40 xl:mr-40">
+    {#each SPACE_MODES as mode}
+      <Button
+        class={$spaceMode === mode ? "btn btn-accent" : "btn btn-low"}
+        on:click={() => userMode.set(mode)}>
+        {SPACES[mode].label}
+      </Button>
+    {/each}
+  </div>
+{/if}
 
 <div class="xl:-ml-40 xl:mr-40">
   <Feed showControls feed={initialFeed} />

@@ -76,3 +76,30 @@ export const slugifyTitle = (title: string, fallback: string) =>
     .replace(/[^\p{L}\p{N}]+/gu, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 60) || fallback
+
+// Host configuration: the server operator decides how the space looks. It is a small JSON
+// document served next to the app (see public/true-host.json), so any static host can provide it.
+
+export type HostConfig = {
+  name: string
+  mode: SpaceMode
+  allowUserMode: boolean
+}
+
+export const DEFAULT_HOST: HostConfig = {name: "", mode: DEFAULT_SPACE, allowUserMode: true}
+
+// Accepts anything (the file comes from the network) and falls back field by field.
+export const parseHostConfig = (raw: unknown): HostConfig => {
+  const o = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {}
+
+  return {
+    name: typeof o.name === "string" ? o.name.slice(0, 80) : DEFAULT_HOST.name,
+    mode: isSpaceMode(o.mode) ? o.mode : DEFAULT_HOST.mode,
+    allowUserMode:
+      typeof o.allowUserMode === "boolean" ? o.allowUserMode : DEFAULT_HOST.allowUserMode,
+  }
+}
+
+// The host's mode wins unless it lets users choose and this user already did.
+export const resolveMode = (host: HostConfig, userMode: unknown): SpaceMode =>
+  host.allowUserMode && isSpaceMode(userMode) ? userMode : host.mode

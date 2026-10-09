@@ -1,14 +1,32 @@
-import {derived} from "svelte/store"
+import {derived, writable} from "svelte/store"
 import {synced, localStorageProvider} from "@welshman/store"
-import {DEFAULT_SPACE, getSpace} from "src/true/spaceConfig"
-import type {SpaceMode} from "src/true/spaceConfig"
+import {DEFAULT_HOST, getSpace, parseHostConfig, resolveMode} from "src/true/spaceConfig"
+import type {HostConfig, SpaceMode} from "src/true/spaceConfig"
 
-// For now the space mode is a per-device setting. A host-level config (shared by everyone
-// using a given server) can later replace this store without touching the views.
-export const spaceMode = synced<SpaceMode>({
+// What the host (server operator) configured, loaded from /true-host.json at startup.
+export const hostConfig = writable<HostConfig>(DEFAULT_HOST)
+
+export const loadHostConfig = async (url = "/true-host.json") => {
+  try {
+    const res = await fetch(url, {cache: "no-cache"})
+
+    if (res.ok) hostConfig.set(parseHostConfig(await res.json()))
+  } catch (e) {
+    // No host file (or offline): keep the defaults
+  }
+}
+
+// The user's own choice, only honoured when the host allows it. null = follow the host.
+export const userMode = synced<SpaceMode | null>({
   key: "true/space",
-  defaultValue: DEFAULT_SPACE,
+  defaultValue: null,
   storage: localStorageProvider,
 })
 
+export const spaceMode = derived([hostConfig, userMode], ([$host, $user]) =>
+  resolveMode($host, $user),
+)
+
 export const space = derived(spaceMode, $mode => getSpace($mode))
+
+if (typeof window !== "undefined") void loadHostConfig()

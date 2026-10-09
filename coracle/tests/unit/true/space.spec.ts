@@ -29,3 +29,27 @@ describe("space config", () => {
     expect(slugifyTitle("!!!", "fallback")).toBe("fallback")
   })
 })
+
+import {DEFAULT_HOST, parseHostConfig, resolveMode} from "../../../src/true/spaceConfig"
+
+describe("host config", () => {
+  it("falls back field by field on bad input", () => {
+    expect(parseHostConfig(null)).toEqual(DEFAULT_HOST)
+    expect(parseHostConfig({mode: "wiki", allowUserMode: "yes", name: 5})).toEqual(DEFAULT_HOST)
+    expect(parseHostConfig({mode: "board", name: "x"})).toEqual({
+      name: "x",
+      mode: "board",
+      allowUserMode: true,
+    })
+  })
+
+  it("host wins unless users may choose", () => {
+    const locked = {...DEFAULT_HOST, mode: "board" as const, allowUserMode: false}
+    const open = {...locked, allowUserMode: true}
+
+    expect(resolveMode(locked, "blog")).toBe("board")
+    expect(resolveMode(open, "blog")).toBe("blog")
+    expect(resolveMode(open, null)).toBe("board")
+    expect(resolveMode(open, "garbage")).toBe("board")
+  })
+})
