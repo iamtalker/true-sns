@@ -1,0 +1,9 @@
+{
+  "name": "true-sns-dev-relay",
+  "private": true,
+  "type": "module",
+  "version": "0.0.1",
+  "description": "Minimal in-memory nostr relay for local testing only (NIP-01). Use strfry for real deployments.",
+  "scripts": {"start": "node relay.mjs"},
+  "dependencies": {"nostr-tools": "^2.10.0", "ws": "^8.18.0"}
+}

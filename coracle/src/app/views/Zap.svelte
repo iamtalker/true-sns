@@ -1,0 +1,195 @@
+<script lang="ts">
+  import {noop, nth, sum} from "@welshman/lib"
+  import {Nip01Signer} from "@welshman/signer"
+  import type {ISigner} from "@welshman/signer"
+  import {Router} from "@welshman/app"
+  import {ZapRequest} from "@welshman/domain"
+  import {showInfo, showWarning} from "src/partials/Toast.svelte"
+  import Link from "src/partials/Link.svelte"
+  import Input from "src/partials/Input.svelte"
+  import Button from "src/partials/Button.svelte"
+  import FieldInline from "src/partials/FieldInline.svelte"
+  import PersonLink from "src/app/shared/PersonLink.svelte"
+  import PersonCircles from "src/app/shared/PersonCircles.svelte"
+  import {makeZapSplit} from "src/util/nostr"
+  import {router} from "src/app/util"
+  import {app, network, profiles, zappers} from "src/engine/core"
+  import {env, getSetting, payInvoice} from "src/engine"
+
+  export let splits
+  export let id = undefined
+  export let anonymous = false
+  export let amount = getSetting<number>("default_zap")
+
+  const minPos = 1
+  const maxPos = 1000
+  const minVal = 21
+  const maxVal = 1000000
+
+  const posToAmount = (pos: number) => {
+    const normalizedPos = (pos - minPos) / (maxPos - minPos)
+    const logMin = Math.log(minVal)
+    const logMax = Math.log(maxVal)
+    const logValue = logMin + normalizedPos * (logMax - logMin)
+    return Math.round(Math.exp(logValue))
+  }
+
+  const amountToPos = (amount: number) => {
+    const clampedAmount = Math.max(minVal, Math.min(maxVal, amount))
+    const logMin = Math.log(minVal)
+    const logMax = Math.log(maxVal)
+    const logValue = Math.log(clampedAmount)
+    const normalizedPos = (logValue - logMin) / (logMax - logMin)
+    return Math.round(minPos + normalizedPos * (maxPos - minPos))
+  }
+
+  const back = () => router.pop()
+
+  const makeZapRequest = (signer: ISigner) =>
+    ZapRequest.configure({resolver: $app.use(Router).resolver, signer}).writer()
+
+  const sendZap = async () => {
+    const totalWeight = sum(splits.map(s => parseFloat(s[3]) || 0))
+    const percent = getSetting("platform_zap_split") as number
+    const platformSplit = makeZapSplit(env.PLATFORM_PUBKEY, "", percent * totalWeight)
+    const signer = anonymous ? Nip01Signer.ephemeral() : $app.user?.signer
+    const event = id ? $app.repository.getEvent(id) : undefined
+
+    if (!signer) {
+      return showWarning("Failed to zap: you are not signed in")
+    }
+
+    loading = true
+
+    let hasError = false
+
+    try {
+      const requests: Promise<unknown>[] = []
+
+      for (const [, pubkey, , weightString] of [...splits, platformSplit]) {
+        const weight = parseFloat(weightString)
+        const msats = Math.round(1000 * amount * (weight / totalWeight))
+        const zapper = await $zappers.loadForPubkey(pubkey).catch(noop)
+
+        if (msats === 0) {
+          continue
+        }
+
+        if (!zapper) {
+          return showWarning(`Failed to zap: no zapper found`)
+        }
+
+        const zapRequest = makeZapRequest(signer)
+          .setContent(content)
+          .setAmount(msats)
+          .setLnurl(zapper.lnurl)
+          .setRecipient(pubkey)
+          .setAnonymous(anonymous)
+
+        if (event) {
+          zapRequest.setEvent(event)
+        }
+
+        // The writer routes the receipt to the recipient's inbox, and to a zap goal's own
+        // relays, so listen for it wherever it asked the zapper to publish.
+        const relays = await zapRequest.relays()
+        const filters = [zapper.getResponseFilter(pubkey, id)]
+
+        const res = await zapRequest.requestInvoice(zapper)
+
+        if (!res.invoice) {
+          if (pubkey === env.PLATFORM_PUBKEY) {
+            continue
+          } else {
+            return showWarning(`Failed to zap: ${res.error || "no error given"}`)
+          }
+        }
+
+        try {
+          await payInvoice(res.invoice)
+
+          const ctrl = new AbortController()
+
+          requests.push(
+            new Promise<void>(resolve =>
+              network.get().request({
+                filters,
+                relays,
+                signal: AbortSignal.any([AbortSignal.timeout(8000), ctrl.signal]),
+                onEvent: () => ctrl.abort(),
+                onClose: resolve,
+              }),
+            ),
+          )
+        } catch (e) {
+          const message = String(e).replace(/^.*Error: /, "")
+
+          showWarning(`Failed to zap ${$profiles.display(pubkey).get()}: ${message}`)
+          hasError = true
+        }
+      }
+
+      await Promise.all(requests)
+
+      if (!hasError) {
+        showInfo("Zap successfully sent!")
+        back()
+      }
+    } finally {
+      loading = false
+    }
+  }
+
+  let content = ""
+  let loading = false
+  let pos = amountToPos(amount)
+
+  const onPosChange = () => {
+    amount = posToAmount(pos)
+  }
+
+  const onAmountChange = () => {
+    pos = amountToPos(amount)
+  }
+</script>
+
+<div class="flex flex-col gap-6">
+  <div>
+    <h2 class="staatliches text-2xl">Send a Zap</h2>
+    <p>To <PersonLink underline pubkey={splits[0][1]} /></p>
+  </div>
+  <FieldInline label="Message (optional)">
+    <Input bind:value={content} />
+  </FieldInline>
+  <FieldInline label="Amount">
+    <Input type="number" bind:value={amount} on:input={onAmountChange} />
+  </FieldInline>
+  <Input
+    class="-mt-2"
+    type="range"
+    min={minPos}
+    max={maxPos}
+    bind:value={pos}
+    on:input={onPosChange} />
+  {#if splits.length > 1}
+    {@const pubkeys = splits.map(nth(1))}
+    <div class="flex items-center gap-1 text-sm">
+      <p>This note has zap splits enabled. You'll be zapping {splits.length} people:</p>
+      <Link modal href={router.at("people/list").qp({pubkeys}).toString()}>
+        <PersonCircles class="h-5 w-5" {pubkeys} />
+      </Link>
+    </div>
+  {/if}
+  <div class="flex justify-between">
+    <Button class="btn" on:click={back}>
+      <i class="fa fa-chevron-left" />
+      Go back
+    </Button>
+    <Button class="btn btn-accent" on:click={sendZap} {loading}>
+      {#if !loading}
+        <i class="fa fa-bolt" />
+      {/if}
+      Send Zap
+    </Button>
+  </div>
+</div>

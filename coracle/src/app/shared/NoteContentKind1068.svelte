@@ -1,0 +1,148 @@
+<script lang="ts">
+  import cx from "classnames"
+  import {onMount} from "svelte"
+  import type {TrustedEvent} from "@welshman/util"
+  import {POLL_RESPONSE} from "@welshman/util"
+  import {formatTimestampRelative, noop} from "@welshman/lib"
+  import {Poll} from "@welshman/domain"
+  import {myLoad, publishPollResponse, deleteEvent} from "src/engine"
+  import {deriveEvents, pubkey, reader, resolveRelays, signer} from "src/engine/core"
+  import {router} from "src/app/util/router"
+  import NoteContentKind1 from "src/app/shared/NoteContentKind1.svelte"
+  import {
+    getPollType,
+    getPollOptions,
+    getPollEndsAt,
+    getPollRelaySelections,
+    getPollResponseSelections,
+    isPollClosed,
+  } from "src/util/polls"
+
+  export let note: TrustedEvent
+  export let showEntire = false
+  export let showMedia = false
+
+  const pollType = getPollType(note)
+  const options = getPollOptions(note)
+  const endsAt = getPollEndsAt(note)
+  const filters = [{kinds: [POLL_RESPONSE], "#e": [note.id]}]
+  const responses = deriveEvents(filters)
+
+  const getOwnResponse = (events: TrustedEvent[]) => {
+    let latest: TrustedEvent | undefined
+
+    for (const event of events) {
+      if (event.pubkey !== $pubkey) continue
+
+      if (!latest || event.created_at > latest.created_at) {
+        latest = event
+      }
+    }
+
+    return latest
+  }
+
+  const onOptionClick = (id: string) => {
+    if (!$signer || closed) return
+
+    if (pollType === "singlechoice") {
+      selectedIds = [id]
+    } else {
+      selectedIds = selectedIds.includes(id)
+        ? selectedIds.filter(selectedId => selectedId !== id)
+        : [...selectedIds, id]
+    }
+
+    const previousResponses = $responses.filter(response => response.pubkey === $pubkey)
+
+    if (selectedIds.length > 0 || previousResponses.length > 0) {
+      publishPollResponse({event: note, selectedIds}).catch(noop)
+    }
+
+    // Replace our prior responses so superseded votes don't linger on relays
+    for (const response of previousResponses) {
+      deleteEvent(response).catch(noop)
+    }
+  }
+
+  const showVoters = () => router.at("notes").of(note.id).at("votes").open()
+
+  let selectedIds: string[] = []
+
+  $: closed = isPollClosed(note)
+  $: canVote = Boolean($signer) && !closed
+  $: results = reader(Poll)(note).results($responses)
+  $: ownResponse = getOwnResponse($responses)
+
+  // Keep the displayed selection in sync with our latest published response
+  $: if (ownResponse) {
+    selectedIds = getPollResponseSelections(ownResponse, pollType)
+  }
+
+  onMount(() => {
+    resolveRelays(getPollRelaySelections(note))
+      .then(relays => myLoad({relays, filters}))
+      .catch(noop)
+  })
+</script>
+
+<div class="flex flex-col gap-3">
+  {#if note.content}
+    <NoteContentKind1 {note} {showEntire} {showMedia} />
+  {/if}
+  <div class="flex flex-col gap-2">
+    {#each options as option (option.id)}
+      {@const votes = results.options.find(o => o.id === option.id)?.votes || 0}
+      {@const percent = results.voters > 0 ? Math.round((votes / results.voters) * 100) : 0}
+      {@const selected = selectedIds.includes(option.id)}
+      <button
+        type="button"
+        disabled={!canVote}
+        on:click|stopPropagation={() => onOptionClick(option.id)}
+        class={cx(
+          "relative w-full overflow-hidden rounded border border-solid border-neutral-600 text-left",
+          {"cursor-pointer hover:border-neutral-500": canVote},
+        )}>
+        <div
+          class="absolute inset-y-0 left-0 bg-neutral-700 transition-all duration-500"
+          style={`width: ${percent}%`}>
+        </div>
+        <div class="relative flex items-center justify-between gap-3 px-3 py-2">
+          <span class="flex min-w-0 items-center gap-2">
+            {#if canVote}
+              <i
+                class={cx("fa", {
+                  "fa-circle-dot text-accent": pollType === "singlechoice" && selected,
+                  "fa-circle": pollType === "singlechoice" && !selected,
+                  "fa-square-check text-accent": pollType === "multiplechoice" && selected,
+                  "fa-square": pollType === "multiplechoice" && !selected,
+                })}>
+              </i>
+            {:else if selected}
+              <i class="fa fa-check text-accent"></i>
+            {/if}
+            <span class="truncate">{option.label}</span>
+          </span>
+          <span class="whitespace-nowrap text-sm opacity-75">{percent}% ({votes})</span>
+        </div>
+      </button>
+    {/each}
+  </div>
+  <div class="flex flex-wrap items-center justify-between gap-2 text-sm opacity-75">
+    <span>
+      {pollType === "multiplechoice" ? "Multiple choice" : "Single choice"}
+      {#if endsAt}
+        • {closed ? "Ended" : "Ends"}
+        {formatTimestampRelative(endsAt)}
+      {/if}
+    </span>
+    {#if results.voters > 0}
+      <button type="button" class="cursor-pointer underline" on:click|stopPropagation={showVoters}>
+        {results.voters}
+        {results.voters === 1 ? "vote" : "votes"}
+      </button>
+    {:else}
+      <span>0 votes</span>
+    {/if}
+  </div>
+</div>

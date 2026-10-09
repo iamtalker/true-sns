@@ -1,0 +1,139 @@
+<script lang="ts">
+  import {onMount, getContext} from "svelte"
+  import {noop, nth, now, nthEq} from "@welshman/lib"
+  import type {TrustedEvent} from "@welshman/util"
+  import {
+    getIdOrAddress,
+    getReplyFilters,
+    inbox,
+    NOTE,
+    COMMENT,
+    REACTION,
+    ZAP_RECEIPT,
+  } from "@welshman/util"
+  import type {Publication} from "@welshman/app"
+  import {Publisher} from "@welshman/app"
+  import NoteActions from "src/app/shared/NoteActions.svelte"
+  import NoteContent from "src/app/shared/NoteContent.svelte"
+  import NoteHeader from "src/app/shared/NoteHeader.svelte"
+  import NoteReply from "src/app/shared/NoteReply.svelte"
+  import Button from "src/partials/Button.svelte"
+  import Card from "src/partials/Card.svelte"
+  import {ticker} from "src/util/misc"
+  import {headerlessKinds} from "src/util/nostr"
+  import NotePending from "src/app/shared/NotePending.svelte"
+  import {getSetting, env, isEventMuted, loadPubkeys, myLoad} from "src/engine"
+  import {fromApp, getWriteRelays, pubkey, resolveRelays} from "src/engine/core"
+  import {router} from "src/app/util"
+
+  export let event: TrustedEvent
+  export let depth = 0
+  export let pinned = false
+  export let interactive = true
+  export let showParent = true
+  export let showEntire = false
+  export let showMedia = getSetting("show_media")
+  export let replyIsOpen = false
+  export let addPendingReply = (publication: Publication) => undefined
+  export let removePendingReply = (publication: Publication) => undefined
+
+  let showHidden = false
+
+  const topLevel = getContext("topLevel")
+
+  const start = now()
+
+  const elapsed = ticker()
+
+  const publications = fromApp($app => $app.use(Publisher).history)
+
+  const onClick = e => {
+    const target = (e.detail?.target || e.target) as HTMLElement
+
+    if (interactive && !["I"].includes(target.tagName) && !target.closest("a")) {
+      const relays = getWriteRelays(event.pubkey)
+
+      router.at("notes").of(getIdOrAddress(event), {relays}).open()
+    }
+  }
+
+  const onReplyStart = () => {
+    replyIsOpen = true
+  }
+
+  const onReplyCancel = () => {
+    replyIsOpen = false
+  }
+
+  const onReplyPublish = (publication: Publication) => {
+    addPendingReply(publication)
+    replyIsOpen = false
+  }
+
+  const onReplyAbort = (publication: Publication) => {
+    removePendingReply(publication)
+    replyIsOpen = true
+  }
+
+  $: hidden = $isEventMuted(event, true)
+  $: publication = $publications.find(p => p.event.id === event.id)
+  $: pending = event.created_at + 60 > start + $elapsed
+
+  onMount(() => {
+    loadPubkeys(event.tags.filter(nthEq(0, "zap")).map(nth(1)))
+
+    const actions = getSetting("note_actions")
+    const kinds = []
+
+    if (actions.includes("replies")) {
+      kinds.push(NOTE)
+      kinds.push(COMMENT)
+    }
+
+    if (actions.includes("reactions")) {
+      kinds.push(REACTION)
+    }
+
+    if (env.ENABLE_ZAPS && actions.includes("zaps")) {
+      kinds.push(ZAP_RECEIPT)
+    }
+
+    resolveRelays([inbox(event.pubkey)])
+      .then(relays => myLoad({relays, filters: getReplyFilters([event], {kinds})}))
+      .catch(noop)
+  })
+</script>
+
+<div class="group relative">
+  <Card stopPropagation class="relative" on:click={onClick} {interactive}>
+    {#if pinned}
+      <i class="fa fa-thumbtack absolute -right-1 -top-1 rotate-45 text-accent" />
+    {/if}
+    {#if !headerlessKinds.includes(event.kind)}
+      <NoteHeader {event} {showParent} />
+    {/if}
+    {#if hidden && !showHidden}
+      <p class="ml-14 mt-4 border-l-2 border-solid border-neutral-600 pl-4 text-neutral-100">
+        You have hidden this note.
+        <Button
+          stopPropagation
+          class="underline"
+          on:click={() => {
+            showHidden = true
+          }}>Show</Button>
+      </p>
+    {:else}
+      <div class:!pl-0={headerlessKinds.includes(event.kind)} class="mt-2 sm:pl-14">
+        <NoteContent note={event} {depth} {showEntire} {showMedia} />
+      </div>
+      <div class:!pl-10={headerlessKinds.includes(event.kind)} class="pt-4 sm:pl-14">
+        {#if pending && event.pubkey === $pubkey && !topLevel && publication}
+          <NotePending {publication} {onReplyAbort} />
+        {:else}
+          <NoteActions {event} {onReplyStart} />
+        {/if}
+      </div>
+    {/if}
+  </Card>
+  <NoteReply parent={event} {replyIsOpen} {onReplyCancel} {onReplyPublish} />
+</div>

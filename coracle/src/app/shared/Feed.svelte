@@ -1,0 +1,231 @@
+<script lang="ts">
+  import {onMount} from "svelte"
+  import {writable} from "svelte/store"
+  import {WEEK, noop, not, now, ago, uniqBy, hash} from "@welshman/lib"
+  import {sortEventsDesc} from "@welshman/util"
+  import type {TrustedEvent} from "@welshman/util"
+  import {synced, localStorageProvider} from "@welshman/store"
+  import type {FeedController, Feed as FeedDefinition} from "@welshman/feeds"
+  import {
+    isRelayFeed,
+    makeKindFeed,
+    makeIntersectionFeed,
+    isKindFeed,
+    walkFeed,
+  } from "@welshman/feeds"
+  import {app, feeds} from "src/engine/core"
+  import {createScroller} from "src/util/misc"
+  import {makeZapSplit, noteKinds, repostKinds} from "src/util/nostr"
+  import {fly, fade} from "src/util/transition"
+  import Button from "src/partials/Button.svelte"
+  import Card from "src/partials/Card.svelte"
+  import Spinner from "src/partials/Spinner.svelte"
+  import FlexColumn from "src/partials/FlexColumn.svelte"
+  import NoteReducer from "src/app/shared/NoteReducer.svelte"
+  import FeedControls from "src/app/shared/FeedControls.svelte"
+  import {zap} from "src/app/util"
+  import type {Feed} from "src/domain"
+  import {env} from "src/engine"
+  import FeedItem from "src/app/shared/FeedItem.svelte"
+  import BoardRow from "src/true/BoardRow.svelte"
+  import {space} from "src/true/space"
+
+  export let feed: Feed
+  export let anchor = null
+  export let showControls = false
+  export let hideSpinner = false
+  export let shouldSort = false
+  export let maxDepth = 2
+
+  let abortController = new AbortController()
+
+  const startZap = () => zap({splits: [makeZapSplit(env.PLATFORM_PUBKEY)]})
+
+  const promptDismissed = synced({
+    key: "feed/promptDismissed",
+    defaultValue: 0,
+    storage: localStorageProvider,
+  })
+
+  const shouldHideReplies = showControls
+    ? synced({
+        key: "Feed.shouldHideReplies",
+        defaultValue: false,
+        storage: localStorageProvider,
+      })
+    : writable(false)
+
+  // Local-first: the controller only consults the local store after the network race, so an
+  // offline or slow relay would hide the user's own data. Show what we already have right away.
+  const showLocalFirst = async (controller: FeedController, definition: FeedDefinition, signal) => {
+    try {
+      const items = await controller.compiler.compile(definition)
+
+      if (signal.aborted) return
+
+      for (const {filters} of items) {
+        for (const e of $app.repository.query(filters)) buffer.push(e)
+      }
+
+      loadMore()
+    } catch (e) {
+      // Feeds that can't be compiled locally (DVM, search, ...) just rely on the network path
+    }
+  }
+
+  const reload = () => {
+    abortController.abort()
+    abortController = new AbortController()
+    exhausted = false
+    useWindowing = true
+    events = []
+    buffer = []
+
+    // Capture this reload's signal so callbacks from a feed we've since canceled
+    // can't contribute events to the current feed. The underlying request layer
+    // doesn't reliably stop firing onEvent after an abort (e.g. the local-relay
+    // query that runs after the network race may start with an already-aborted
+    // signal), so we guard explicitly.
+    const {signal} = abortController
+
+    let hasKinds = false
+
+    walkFeed(feed.definition, (subFeed: FeedDefinition) => {
+      hasKinds = hasKinds || isKindFeed(subFeed)
+      useWindowing = useWindowing && !isRelayFeed(subFeed)
+    })
+
+    // Blog/board spaces only show their own kinds; micro keeps the default mix
+    const defaultKinds =
+      $space.mode === "micro" ? [...noteKinds, ...repostKinds] : $space.kinds
+
+    const definition = hasKinds
+      ? feed.definition
+      : makeIntersectionFeed(makeKindFeed(...defaultKinds), feed.definition)
+
+    ctrl = $feeds.makeFeedController({
+      feed: definition,
+      useWindowing,
+      signal,
+      onEvent: e => {
+        if (signal.aborted) return
+
+        buffer.push(e)
+      },
+      onExhausted: () => {
+        if (signal.aborted) return
+
+        exhausted = true
+      },
+    })
+
+    if (!useWindowing) {
+      ctrl.load(1000).catch(noop)
+    } else {
+      showLocalFirst(ctrl, definition, signal)
+    }
+  }
+
+  const toggleReplies = () => shouldHideReplies.update(not)
+
+  const updateFeed = newFeed => {
+    feed = newFeed
+    reload()
+  }
+
+  const loadMore = async () => {
+    buffer = uniqBy(e => e.id, sortEventsDesc(buffer))
+    events = [...events, ...buffer.splice(0, 10)]
+
+    if (useWindowing && buffer.length < 25) {
+      ctrl.load(25).catch(noop)
+    }
+  }
+
+  let element
+  let depth = 0
+  let exhausted = false
+  let useWindowing = true
+  let ctrl: FeedController
+  let events: TrustedEvent[] = []
+  let buffer: TrustedEvent[] = []
+
+  $: {
+    depth = $shouldHideReplies ? 0 : maxDepth
+    $space.mode // reload when the space changes
+    reload()
+  }
+
+  onMount(() => {
+    const scroller = createScroller(loadMore, {
+      element,
+      delay: 300,
+      threshold: 3000,
+    })
+
+    return () => {
+      scroller.stop()
+      abortController.abort()
+    }
+  })
+</script>
+
+{#if showControls}
+  <FeedControls {feed} {updateFeed}>
+    <div slot="controls">
+      {#if $shouldHideReplies}
+        <Button class="btn btn-low border-none opacity-50" on:click={toggleReplies}>Replies</Button>
+      {:else}
+        <Button class="btn btn-accent border-none" on:click={toggleReplies}>Replies</Button>
+      {/if}
+    </div>
+  </FeedControls>
+{/if}
+
+<FlexColumn bind:element>
+  {#key abortController}
+    <NoteReducer
+      {shouldSort}
+      {depth}
+      {events}
+      shouldAwait
+      hideReplies={$shouldHideReplies}
+      let:event
+      let:getContext
+      let:i>
+      <div in:fly={{y: 20}}>
+        {#if $space.layout === "list"}
+          <BoardRow {event} />
+        {:else}
+          <FeedItem showMeta topLevel {getContext} {depth} {anchor} note={event} />
+        {/if}
+      </div>
+      {#if i > 20 && hash(event.id) % 100 === 0 && $promptDismissed < ago(WEEK)}
+        <Card class="group flex items-center justify-between">
+          <p class="text-xl">Enjoying Coracle?</p>
+          <div class="flex gap-2">
+            <Button
+              class="hidden text-neutral-400 opacity-0 transition-all group-hover:opacity-100 sm:visible"
+              on:click={() => promptDismissed.set(now())}>
+              Dismiss
+            </Button>
+            <Button class="btn btn-accent" on:click={startZap}>Zap the developer</Button>
+          </div>
+        </Card>
+      {/if}
+    </NoteReducer>
+  {/key}
+</FlexColumn>
+
+{#if !hideSpinner}
+  {#if exhausted}
+    <div transition:fly|local={{y: 20, delay: 500}} class="flex flex-col items-center py-24">
+      <img alt="" class="h-20 w-20" src="/images/pumpkin.png" />
+      That's all!
+    </div>
+  {:else}
+    <div out:fade|local>
+      <Spinner />
+    </div>
+  {/if}
+{/if}
