@@ -127,6 +127,11 @@
 - 테스트 계정: 로그인 화면의 **"Use a test account (dev only)"** 버튼(일회용 키를 만들어 바로 입장, 프로필 검색 단계 생략). `coracle/.env` 에 `VITE_DEV_LOGIN=true` 이고 dev 서버(`import.meta.env.DEV`)일 때만 보이며 프로덕션 빌드에는 나타나지 않음. 키는 그 브라우저의 localStorage 에만 있음(지우면 계정도 사라짐).
 - 직접 써 보는 길: 로그인 → 왼쪽 메뉴 Settings → Database(`/settings/data`) → Export 의 Create Backup(Markdown/폴더 미러) / Import 의 Upload Backup.
 
+## 7-1. 사용해 보다 발견한 문제 (수정됨)
+- 글을 써도 **내 글이 피드에 안 보임**: 홈 피드가 "팔로우한 사람(없으면 Coracle 기본 목록)"의 글만 보여 줌 → 홈 피드에 내 글을 항상 포함(`defaultFeed`, `state.ts`).
+- 작성 화면을 페이지로 열었을 때 발행 후에도 그 화면에 글이 그대로 남음 → 발행 후 피드로 이동(`NoteCreate.svelte`).
+- 참고: 앱 내장 브라우저 창은 화면이 그려지지 않는 상태라 CSS 애니메이션이 멈춰 모달이 화면 밖(아래)에 머무는 현상이 있음. 테스트 때 애니메이션을 끄고 확인. 실제 브라우저에서는 정상.
+
 ## 8. 로드맵 (현재)
 | # | 작업 | 상태 |
 |---|---|---|

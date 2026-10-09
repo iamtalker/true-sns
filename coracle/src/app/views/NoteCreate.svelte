@@ -200,6 +200,10 @@
     router.clearModals()
     drafts.delete(DRAFT_KEY)
 
+    // Opened as a plain page (not a modal) there is nothing to close: go back to the feed so
+    // the user sees that the post went out instead of staring at the same text.
+    if (window.location.pathname === "/notes/create") router.at("notes").push()
+
     if (options.publish_at) {
       const dvmContent = await user.signer.nip04.encrypt(
         SHIPYARD_PUBKEY,

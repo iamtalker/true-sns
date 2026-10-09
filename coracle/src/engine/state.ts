@@ -24,6 +24,7 @@ import type {Maybe} from "@welshman/lib"
 import {
   makeAuthorFeed,
   makeScopeFeed,
+  makeUnionFeed,
   makeIntersectionFeed,
   makeKindFeed,
   Scope,
@@ -480,16 +481,25 @@ export const userFeeds = derived(
     $savedFeeds.filter(feed => feed.event.pubkey === $pubkey),
 )
 
-export const defaultFeed = derived([userFollows, userFeeds], ([$userFollows, $userFeeds]) => {
-  const baseDefinition =
-    $userFollows?.size > 0 ? makeScopeFeed(Scope.Follows) : makeAuthorFeed(...env.DEFAULT_FOLLOWS)
+export const defaultFeed = derived(
+  [userFollows, userFeeds, pubkey],
+  ([$userFollows, $userFeeds, $pubkey]) => {
+    const followsDefinition =
+      $userFollows?.size > 0 ? makeScopeFeed(Scope.Follows) : makeAuthorFeed(...env.DEFAULT_FOLLOWS)
 
-  const definition = normalizeFeedDefinition(
-    makeIntersectionFeed(baseDefinition, makeKindFeed(...noteKinds)),
-  )
+    // The user's own posts always belong in their home feed. Otherwise a new account that
+    // follows nobody writes something and never sees it.
+    const baseDefinition = $pubkey
+      ? makeUnionFeed(followsDefinition, makeAuthorFeed($pubkey))
+      : followsDefinition
 
-  return makeFeed({definition})
-})
+    const definition = normalizeFeedDefinition(
+      makeIntersectionFeed(baseDefinition, makeKindFeed(...noteKinds)),
+    )
+
+    return makeFeed({definition})
+  },
+)
 
 export const feedFavorites = fromApp($app => $app.use(FeedLists).all.$)
 
